@@ -18,6 +18,7 @@ class FaceSwapConfig(VideoConfig):
     enable_enhancer: bool = False
     enhancer_weight: float = Field(default=0.7, ge=0.0, le=1.0)  # GFPGAN blend weight
     color_correction: float = Field(default=0.5, ge=0.0, le=1.0)  # Color matching strength
+    background_image: Optional[Path] = None  # Custom background image for replacement
     provider: Literal['cuda', 'cpu'] = 'cuda'
     model_cache_dir: Path = Field(default_factory=lambda: Path.home() / ".cache" / "offline-faceswap")
 

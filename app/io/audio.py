@@ -3,11 +3,59 @@ import shutil
 from pathlib import Path
 import logging
 import json
+import os
 
 logger = logging.getLogger(__name__)
 
+def find_ffmpeg() -> str:
+    """Find FFmpeg executable path."""
+    # Check if in PATH
+    ffmpeg = shutil.which('ffmpeg')
+    if ffmpeg:
+        return ffmpeg
+    
+    # Check common Windows locations
+    common_paths = [
+        Path.home() / "AppData/Local/Microsoft/WinGet/Packages",
+        Path("C:/ffmpeg/bin"),
+        Path("C:/Program Files/ffmpeg/bin"),
+    ]
+    
+    for base_path in common_paths:
+        if base_path.exists():
+            # Search for ffmpeg.exe
+            for ffmpeg_exe in base_path.rglob("ffmpeg.exe"):
+                return str(ffmpeg_exe)
+    
+    return 'ffmpeg'  # Fallback to hoping it's in PATH
+
+def find_ffprobe() -> str:
+    """Find FFprobe executable path."""
+    ffprobe = shutil.which('ffprobe')
+    if ffprobe:
+        return ffprobe
+    
+    # Try same directory as ffmpeg
+    ffmpeg_path = find_ffmpeg()
+    if ffmpeg_path != 'ffmpeg':
+        ffprobe_path = Path(ffmpeg_path).parent / 'ffprobe.exe'
+        if ffprobe_path.exists():
+            return str(ffprobe_path)
+    
+    return 'ffprobe'
+
+# Cache the paths
+FFMPEG_PATH = find_ffmpeg()
+FFPROBE_PATH = find_ffprobe()
+
 def run_ffmpeg(cmd: list, description: str = "FFmpeg") -> bool:
     """Run ffmpeg command and return success status."""
+    # Replace 'ffmpeg' with actual path
+    if cmd[0] == 'ffmpeg':
+        cmd[0] = FFMPEG_PATH
+    elif cmd[0] == 'ffprobe':
+        cmd[0] = FFPROBE_PATH
+    
     try:
         result = subprocess.run(
             cmd, 
@@ -27,10 +75,15 @@ def has_audio(video_path: Path) -> bool:
     """Check if video has audio stream using ffprobe."""
     try:
         cmd = [
-            'ffprobe', '-v', 'quiet', '-print_format', 'json',
+            FFPROBE_PATH, '-v', 'quiet', '-print_format', 'json',
             '-show_streams', str(video_path)
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+        )
         if result.returncode == 0:
             data = json.loads(result.stdout)
             return any(s.get('codec_type') == 'audio' for s in data.get('streams', []))

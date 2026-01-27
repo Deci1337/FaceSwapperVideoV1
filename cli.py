@@ -64,8 +64,9 @@ def swap(
     enable_enhancer: Annotated[bool, typer.Option(help="Enable GFPGAN face enhancement")] = False,
     enhancer_weight: Annotated[float, typer.Option(help="GFPGAN blend weight 0.0-1.0 (lower=natural)")] = 0.7,
     color_correction: Annotated[float, typer.Option(help="Color matching strength 0.0-1.0")] = 0.5,
+    background: Annotated[Optional[Path], typer.Option("--background", "-bg", help="Background image for replacement")] = None,
     keep_audio: Annotated[bool, typer.Option(help="Preserve original audio")] = True,
-    provider: Annotated[str, typer.Option(help="'cuda' or 'cpu'")] = "cuda",
+    provider: Annotated[str, typer.Option(help="'cuda' (NVIDIA), 'dml' (AMD/Intel), or 'cpu'")] = "cuda",
 ):
     """
     Replace faces in video with source face image.
@@ -74,6 +75,7 @@ def swap(
     - Use --enable-enhancer for clearer face details (may look "plastic" if enhancer_weight > 0.8)
     - Adjust --color-correction 0.3-0.7 for natural lighting match
     - Use --provider cpu if no NVIDIA GPU (slower)
+    - Use --background to replace video background with custom image
     """
     from app.config import FaceSwapConfig
     from app.pipelines.faceswap_pipeline import FaceSwapPipeline
@@ -81,10 +83,13 @@ def swap(
     validate_input_file(input, ['.mp4', '.avi', '.mov', '.mkv'])
     validate_input_file(source_face, ['.jpg', '.jpeg', '.png'])
     
+    if background:
+        validate_input_file(background, ['.jpg', '.jpeg', '.png', '.webp'])
+    
     if quality not in ['low', 'medium', 'high']:
         raise typer.BadParameter("quality must be 'low', 'medium', or 'high'")
-    if provider not in ['cuda', 'cpu']:
-        raise typer.BadParameter("provider must be 'cuda' or 'cpu'")
+    if provider not in ['cuda', 'cpu', 'dml']:
+        raise typer.BadParameter("provider must be 'cuda', 'dml', or 'cpu'")
     if not 0.0 <= color_correction <= 1.0:
         raise typer.BadParameter("color_correction must be between 0.0 and 1.0")
     if not 0.0 <= enhancer_weight <= 1.0:
@@ -98,6 +103,7 @@ def swap(
         enable_enhancer=enable_enhancer,
         enhancer_weight=enhancer_weight,
         color_correction=color_correction,
+        background_image=background,
         keep_audio=keep_audio,
         provider=provider
     )
