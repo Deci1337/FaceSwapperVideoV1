@@ -1,0 +1,39 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Output videos
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Test files
+test.*
+face.*
+
+# Model cache
+.cache/
+models/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Plan files
+*.plan.md
+
