@@ -7,9 +7,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Orchestrator:
-    def __init__(self, provider: str = 'cuda', enable_enhancer: bool = False):
+    def __init__(self, provider: str = 'cuda', enable_enhancer: bool = False,
+                 enhancer_weight: float = 0.7, color_correction: float = 0.5):
         self.provider = provider
         self.enable_enhancer = enable_enhancer
+        self.enhancer_weight = enhancer_weight
+        self.color_correction = color_correction
         
     def run_all(self, input_path: Path, source_face: Path, 
                 output_landmarks: Path = Path("debug_landmarks.mp4"),
@@ -39,6 +42,8 @@ class Orchestrator:
             source_face=source_face,
             quality='high',
             enable_enhancer=self.enable_enhancer,
+            enhancer_weight=self.enhancer_weight,
+            color_correction=self.color_correction,
             provider=self.provider,
             keep_audio=True
         )

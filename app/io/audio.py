@@ -1,47 +1,80 @@
-import ffmpeg
+import subprocess
+import shutil
 from pathlib import Path
 import logging
-import os
+import json
 
 logger = logging.getLogger(__name__)
 
-def extract_audio(video_path: Path, audio_path: Path):
-    """Extract audio from video file."""
+def run_ffmpeg(cmd: list, description: str = "FFmpeg") -> bool:
+    """Run ffmpeg command and return success status."""
     try:
-        (
-            ffmpeg
-            .input(str(video_path))
-            .output(str(audio_path), acodec='aac', loglevel='quiet')
-            .overwrite_output()
-            .run()
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
         )
-    except ffmpeg.Error as e:
-        logger.error(f"FFmpeg error extracting audio: {e}")
-        # It's possible the video has no audio, which is fine.
-
-def merge_audio_video(video_path: Path, audio_path: Path, output_path: Path):
-    """Merge video and audio streams."""
-    try:
-        video = ffmpeg.input(str(video_path))
-        audio = ffmpeg.input(str(audio_path))
-        
-        (
-            ffmpeg
-            .output(video, audio, str(output_path), vcodec='copy', acodec='aac', loglevel='quiet')
-            .overwrite_output()
-            .run()
-        )
-    except ffmpeg.Error as e:
-        logger.error(f"FFmpeg error merging audio: {e}")
-        # Fallback: just rename video if merge fails (e.g. no audio)
-        if not output_path.exists():
-            import shutil
-            shutil.copy(video_path, output_path)
+        if result.returncode != 0:
+            logger.error(f"{description} failed: {result.stderr}")
+            return False
+        return True
+    except Exception as e:
+        logger.error(f"{description} exception: {e}")
+        return False
 
 def has_audio(video_path: Path) -> bool:
+    """Check if video has audio stream using ffprobe."""
     try:
-        probe = ffmpeg.probe(str(video_path))
-        return any(stream['codec_type'] == 'audio' for stream in probe['streams'])
-    except Exception:
-        return False
+        cmd = [
+            'ffprobe', '-v', 'quiet', '-print_format', 'json',
+            '-show_streams', str(video_path)
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            return any(s.get('codec_type') == 'audio' for s in data.get('streams', []))
+    except Exception as e:
+        logger.warning(f"Could not probe audio: {e}")
+    return False
+
+def extract_audio(video_path: Path, audio_path: Path) -> bool:
+    """Extract audio from video file."""
+    cmd = [
+        'ffmpeg', '-y', '-i', str(video_path),
+        '-vn', '-acodec', 'copy',
+        str(audio_path)
+    ]
+    return run_ffmpeg(cmd, "Extract audio")
+
+def merge_audio_video(video_path: Path, audio_path: Path, output_path: Path) -> bool:
+    """Merge video and audio streams."""
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', str(video_path),
+        '-i', str(audio_path),
+        '-c:v', 'copy', '-c:a', 'aac',
+        '-map', '0:v:0', '-map', '1:a:0',
+        '-shortest',
+        str(output_path)
+    ]
+    return run_ffmpeg(cmd, "Merge audio")
+
+def copy_audio_to_video(source_video: Path, target_video: Path, output_path: Path) -> bool:
+    """
+    Copy audio from source_video and merge with target_video (no audio).
+    This is the most reliable method - takes audio directly from original.
+    """
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', str(target_video),   # Video without audio
+        '-i', str(source_video),   # Original video with audio
+        '-c:v', 'copy',            # Copy video stream as-is
+        '-c:a', 'aac',             # Re-encode audio to AAC
+        '-map', '0:v:0',           # Take video from first input
+        '-map', '1:a:0?',          # Take audio from second input (optional)
+        '-shortest',
+        str(output_path)
+    ]
+    return run_ffmpeg(cmd, "Copy audio to video")
 

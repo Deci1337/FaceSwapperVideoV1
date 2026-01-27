@@ -61,12 +61,19 @@ def swap(
     source_face: Annotated[Path, typer.Option(help="Source face image (jpg/png)")] = ...,
     output: Annotated[Path, typer.Option(help="Output face-swap video")] = ...,
     quality: Annotated[str, typer.Option(help="'low', 'medium', or 'high'")] = "high",
-    enable_enhancer: Annotated[bool, typer.Option(help="Enable GFPGAN enhancement")] = False,
+    enable_enhancer: Annotated[bool, typer.Option(help="Enable GFPGAN face enhancement")] = False,
+    enhancer_weight: Annotated[float, typer.Option(help="GFPGAN blend weight 0.0-1.0 (lower=natural)")] = 0.7,
+    color_correction: Annotated[float, typer.Option(help="Color matching strength 0.0-1.0")] = 0.5,
     keep_audio: Annotated[bool, typer.Option(help="Preserve original audio")] = True,
     provider: Annotated[str, typer.Option(help="'cuda' or 'cpu'")] = "cuda",
 ):
     """
     Replace faces in video with source face image.
+    
+    Quality tips:
+    - Use --enable-enhancer for clearer face details (may look "plastic" if enhancer_weight > 0.8)
+    - Adjust --color-correction 0.3-0.7 for natural lighting match
+    - Use --provider cpu if no NVIDIA GPU (slower)
     """
     from app.config import FaceSwapConfig
     from app.pipelines.faceswap_pipeline import FaceSwapPipeline
@@ -78,6 +85,10 @@ def swap(
         raise typer.BadParameter("quality must be 'low', 'medium', or 'high'")
     if provider not in ['cuda', 'cpu']:
         raise typer.BadParameter("provider must be 'cuda' or 'cpu'")
+    if not 0.0 <= color_correction <= 1.0:
+        raise typer.BadParameter("color_correction must be between 0.0 and 1.0")
+    if not 0.0 <= enhancer_weight <= 1.0:
+        raise typer.BadParameter("enhancer_weight must be between 0.0 and 1.0")
     
     config = FaceSwapConfig(
         input_path=input,
@@ -85,6 +96,8 @@ def swap(
         source_face=source_face,
         quality=quality,
         enable_enhancer=enable_enhancer,
+        enhancer_weight=enhancer_weight,
+        color_correction=color_correction,
         keep_audio=keep_audio,
         provider=provider
     )

@@ -1,4 +1,4 @@
-# Инструкция по установке и тестированию (Русский)
++# Инструкция по установке и тестированию (Русский)
 
 Пошаговое руководство по установке и запуску проекта Offline Video Face Swap.
 
@@ -297,6 +297,15 @@ python cli.py swap --input video.mp4 --source-face myface.jpg --output result.mp
 ```powershell
 python cli.py swap --input video.mp4 --source-face myface.jpg --output result_hq.mp4 --enable-enhancer --quality high
 ```
+
+**Пример (тонкая настройка):**
+```powershell
+python cli.py swap --input video.mp4 --source-face myface.jpg --output result_tuned.mp4 --enable-enhancer --enhancer-weight 0.5 --color-correction 0.6
+```
+
+**Новые параметры для качества:**
+- `--enhancer-weight 0.0-1.0` - сила GFPGAN (0.5-0.7 рекомендуется, выше = "пластиковое" лицо)
+- `--color-correction 0.0-1.0` - коррекция цвета под освещение видео (0.3-0.6 рекомендуется)
 
 ---
 

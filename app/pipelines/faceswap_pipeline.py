@@ -3,10 +3,11 @@ import numpy as np
 from tqdm import tqdm
 from app.config import FaceSwapConfig
 from app.io.video import VideoReader, VideoWriter
-from app.io.audio import extract_audio, merge_audio_video, has_audio
+from app.io.audio import has_audio, copy_audio_to_video
 from app.models.swapper import FaceSwapper
 from pathlib import Path
 import logging
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +15,17 @@ class FaceSwapPipeline:
     def __init__(self, config: FaceSwapConfig):
         self.config = config
         self.reader = VideoReader(config.input_path)
+        
+        # If keeping audio, write to temp file first
+        self.temp_output = None
+        if config.keep_audio and has_audio(config.input_path):
+            self.temp_output = config.output_path.with_name(f"_temp_{config.output_path.name}")
+            output_for_writer = self.temp_output
+        else:
+            output_for_writer = config.output_path
+            
         self.writer = VideoWriter(
-            config.output_path, 
+            output_for_writer, 
             fps=config.fps if config.fps else self.reader.fps,
             resolution=(self.reader.width, self.reader.height)
         )
@@ -26,9 +36,8 @@ class FaceSwapPipeline:
         
         self.enhancer = None
         if config.enable_enhancer:
-            # Lazy import to avoid basicsr/torchvision compatibility issues
             from app.models.enhancer import FaceEnhancer
-            self.enhancer = FaceEnhancer(config.model_cache_dir)
+            self.enhancer = FaceEnhancer(config.model_cache_dir, blend_weight=config.enhancer_weight)
         
         # Load Source Face
         source_img = cv2.imread(str(config.source_face))
@@ -50,10 +59,13 @@ class FaceSwapPipeline:
             target_face = self.swapper.get_face(frame)
             
             if target_face:
-                # Perform Swap
-                frame = self.swapper.swap(self.source_face, target_face, frame)
+                # Perform Swap with improved blending and color correction
+                frame = self.swapper.swap(
+                    self.source_face, target_face, frame,
+                    color_correction=self.config.color_correction
+                )
                 
-                # GFPGAN Enhancement
+                # GFPGAN Enhancement (optional)
                 if self.enhancer:
                     frame = self.enhancer.enhance(frame, target_face.bbox)
                 
@@ -62,20 +74,20 @@ class FaceSwapPipeline:
         self.reader.release()
         self.writer.release()
         
-        # Handle Audio
-        if self.config.keep_audio and has_audio(self.config.input_path):
-            print("Merging audio...")
-            temp_audio = self.config.output_path.with_suffix('.aac')
-            extract_audio(self.config.input_path, temp_audio)
+        # Handle Audio - copy from original video
+        if self.temp_output and self.temp_output.exists():
+            print("Adding audio from original video...")
+            success = copy_audio_to_video(
+                source_video=self.config.input_path,
+                target_video=self.temp_output,
+                output_path=self.config.output_path
+            )
             
-            temp_video = self.config.output_path.with_name(f"temp_{self.config.output_path.name}")
-            # Rename current output to temp
-            if self.config.output_path.exists():
-                self.config.output_path.rename(temp_video)
-                
-            merge_audio_video(temp_video, temp_audio, self.config.output_path)
-            
-            # Cleanup
-            if temp_audio.exists(): temp_audio.unlink()
-            if temp_video.exists(): temp_video.unlink()
+            if success:
+                # Cleanup temp file
+                self.temp_output.unlink()
+            else:
+                # Fallback: just rename temp to output
+                logger.warning("Audio merge failed, output will have no audio")
+                shutil.move(str(self.temp_output), str(self.config.output_path))
 
