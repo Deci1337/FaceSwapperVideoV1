@@ -31,7 +31,8 @@ class FaceSwapPipeline:
         )
         self.swapper = FaceSwapper(
             cache_dir=config.model_cache_dir,
-            provider=config.provider
+            provider=config.provider,
+            mask_mode=config.mask_mode
         )
         
         self.enhancer = None
@@ -84,7 +85,8 @@ class FaceSwapPipeline:
                 # 1. Perform Face Swap (first, needs original context)
                 frame = self.swapper.swap(
                     self.source_face, target_face, frame,
-                    color_correction=self.config.color_correction
+                    color_correction=self.config.color_correction,
+                    include_hair=self.config.include_hair
                 )
                 
                 # 2. GFPGAN Enhancement (optional)
@@ -93,7 +95,10 @@ class FaceSwapPipeline:
             
             # 3. Background Replacement (last, to cut out the swapped person)
             if self.bg_remover and self.background is not None:
-                frame = self.bg_remover.replace_background(frame, self.background)
+                frame = self.bg_remover.replace_background(
+                    frame, self.background, 
+                    threshold=self.config.bg_threshold
+                )
                 
             self.writer.write(frame)
             

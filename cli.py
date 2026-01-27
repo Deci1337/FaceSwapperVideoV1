@@ -64,7 +64,10 @@ def swap(
     enable_enhancer: Annotated[bool, typer.Option(help="Enable GFPGAN face enhancement")] = False,
     enhancer_weight: Annotated[float, typer.Option(help="GFPGAN blend weight 0.0-1.0 (lower=natural)")] = 0.7,
     color_correction: Annotated[float, typer.Option(help="Color matching strength 0.0-1.0")] = 0.5,
+    mask_mode: Annotated[str, typer.Option(help="'bbox' (ellipse) or 'parsing' (smart face parsing)")] = "bbox",
+    include_hair: Annotated[bool, typer.Option(help="Include hair in mask (for gender swap, use with --mask-mode parsing)")] = False,
     background: Annotated[Optional[Path], typer.Option("--background", "-bg", help="Background image for replacement")] = None,
+    bg_threshold: Annotated[float, typer.Option(help="Background threshold 0.3-0.9 (higher=stricter cut)")] = 0.6,
     keep_audio: Annotated[bool, typer.Option(help="Preserve original audio")] = True,
     provider: Annotated[str, typer.Option(help="'cuda' (NVIDIA), 'dml' (AMD/Intel), or 'cpu'")] = "cuda",
 ):
@@ -72,10 +75,14 @@ def swap(
     Replace faces in video with source face image.
     
     Quality tips:
-    - Use --enable-enhancer for clearer face details (may look "plastic" if enhancer_weight > 0.8)
+    - Use --enable-enhancer for clearer face details
     - Adjust --color-correction 0.3-0.7 for natural lighting match
     - Use --provider cpu if no NVIDIA GPU (slower)
-    - Use --background to replace video background with custom image
+    - Use --background to replace video background
+    
+    Gender swap (male to female):
+    - Use --mask-mode parsing --include-hair for better results
+    - This uses face parsing to include more of the source face shape
     """
     from app.config import FaceSwapConfig
     from app.pipelines.faceswap_pipeline import FaceSwapPipeline
@@ -90,10 +97,14 @@ def swap(
         raise typer.BadParameter("quality must be 'low', 'medium', or 'high'")
     if provider not in ['cuda', 'cpu', 'dml']:
         raise typer.BadParameter("provider must be 'cuda', 'dml', or 'cpu'")
+    if mask_mode not in ['bbox', 'parsing']:
+        raise typer.BadParameter("mask_mode must be 'bbox' or 'parsing'")
     if not 0.0 <= color_correction <= 1.0:
         raise typer.BadParameter("color_correction must be between 0.0 and 1.0")
     if not 0.0 <= enhancer_weight <= 1.0:
         raise typer.BadParameter("enhancer_weight must be between 0.0 and 1.0")
+    if not 0.3 <= bg_threshold <= 0.9:
+        raise typer.BadParameter("bg_threshold must be between 0.3 and 0.9")
     
     config = FaceSwapConfig(
         input_path=input,
@@ -103,7 +114,10 @@ def swap(
         enable_enhancer=enable_enhancer,
         enhancer_weight=enhancer_weight,
         color_correction=color_correction,
+        mask_mode=mask_mode,
+        include_hair=include_hair,
         background_image=background,
+        bg_threshold=bg_threshold,
         keep_audio=keep_audio,
         provider=provider
     )
