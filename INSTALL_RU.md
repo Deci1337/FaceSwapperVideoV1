@@ -1,4 +1,4 @@
-+# Инструкция по установке и тестированию (Русский)
+# Инструкция по установке и тестированию (Русский)
 
 Пошаговое руководство по установке и запуску проекта Offline Video Face Swap.
 
@@ -87,7 +87,7 @@ ffmpeg -version
 ### Шаг 1: Перейдите в папку проекта
 
 ```powershell
-cd C:\Users\HONOR\Desktop\FaceDetectorPractice\offline-faceswap
+cd path\to\offline-faceswap
 ```
 
 ### Шаг 2: Создайте виртуальное окружение
@@ -121,7 +121,7 @@ source venv/bin/activate
 
 После активации в начале строки появится `(venv)`:
 ```
-(venv) PS C:\Users\HONOR\Desktop\FaceDetectorPractice\offline-faceswap>
+(venv) PS path\to\offline-faceswap>
 ```
 
 ---
@@ -518,7 +518,7 @@ pip install onnxruntime-gpu==1.16.0
 
 ```powershell
 # 1. Перейти в папку проекта
-cd C:\Users\HONOR\Desktop\FaceDetectorPractice\offline-faceswap
+cd path\to\offline-faceswap
 
 # 2. Создать и активировать venv
 python -m venv venv

@@ -8,19 +8,31 @@ __pycache__/
 *$py.class
 *.so
 
-# Output videos
+# Output/test videos
 *.mp4
 *.avi
 *.mov
 *.mkv
 
-# Test files
-test.*
-face.*
+# Test images (keep only necessary)
+face*.jpg
+face*.png
+test*.jpg
+test*.png
+output_*.jpg
+output_*.png
+reference*.jpg
+reference*.png
+source_face.jpg
+background.jpg
+
+# Model weights (downloaded automatically, too large for git)
+*.pth
+*.onnx
+gfpgan/weights/
 
 # Model cache
 .cache/
-models/
 
 # IDE
 .idea/
@@ -36,4 +48,3 @@ Thumbs.db
 
 # Plan files
 *.plan.md
-

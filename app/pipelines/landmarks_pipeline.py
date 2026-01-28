@@ -63,3 +63,5 @@ class LandmarksPipeline:
         self.mp_hands.close()
         self.mp_face_mesh.close()
 
+
+
