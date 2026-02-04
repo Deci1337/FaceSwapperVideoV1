@@ -2,7 +2,6 @@
 
 CLI tool for offline video face swapping with landmarks visualization.
 
-You can run in on local site:
 <img width="1919" height="1026" alt="image" src="https://github.com/user-attachments/assets/9272f87b-f172-4809-a46f-b610c09c1d6b" />
 
 
